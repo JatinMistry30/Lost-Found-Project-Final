@@ -174,6 +174,9 @@ const Navbar = ({ isAuthenticated, setIsAuthenticated }) => {
                     Logout
                   </button>
                 </li>
+                <li>
+                  <Link to="/chat-inbox">Chat Inbox</Link>
+                </li>
                 <div className="inbox-container">
                   <button
                     onClick={(e) => {

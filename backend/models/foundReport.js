@@ -29,7 +29,7 @@ class FoundReport {
       await createNotification(
         reportData.itemOwnerId,
         'Found Report',
-        `An item you lost has been reported as found by ${reportData.itemOwnerUsername}!`,
+        `An item you lost has been reported as found by ${reportData.finderEmail}!`,
         reportId  // Pass the report ID to the notification
       );
       

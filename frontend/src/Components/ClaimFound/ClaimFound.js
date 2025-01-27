@@ -93,7 +93,7 @@ const ClaimFound = () => {
 
             if (response.status === 201) {
                 alert("Report submitted successfully.");
-                navigate(`/details/${id}`);
+                navigate(`/`);
             }
         } catch (err) {
             console.error("Error submitting report:", err);

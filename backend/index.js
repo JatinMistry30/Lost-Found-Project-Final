@@ -7,30 +7,73 @@ import itemRoutes from './routes/itemRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import foundReportsRoutes from './routes/detailsRoutes.js';
 import foundReportsRoute from './routes/foundRoutes.js';
-import claimSubmitRoute from './routes/claimSubmitRoutes.js'
-import claimRoutes from './routes/claimRoutes.js'
+import claimSubmitRoute from './routes/claimSubmitRoutes.js';
+import claimRoutes from './routes/claimRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import http from 'http'; // To create an HTTP server
-import { Server } from 'socket.io'; // For WebSocket support
+import  messageRoutes  from './routes/messageRoutes.js'; 
+import { Server } from 'socket.io';
+import { createServer } from 'http';
+import multer from 'multer';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+dotenv.config();
 const app = express();
 
-// Create HTTP server and attach WebSocket server to it
-const server = http.createServer(app);
+const httpServer = createServer(app);
 
-// Set up WebSocket server
-const io = new Server(server, {
+const io = new Server(httpServer, {
   cors: {
-    origin: 'http://localhost:3000', // Frontend origin
-    credentials: true,
-  },
+    origin: "http://localhost:3000",
+    credentials: true
+  }
 });
+const storageChatImages = multer.diskStorage({
+  destination: 'uploadsChatImages/',
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const uploadChatImages = multer({ 
+  storageChatImages,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
+const onlineUsers = new Set();
 
-// Middleware
+io.on('connection', (socket) => {
+  socket.on('user:connect', (userId) => {
+    onlineUsers.add(userId);
+    socket.userId = userId;
+    io.emit('user:online', userId);
+  });
+
+  socket.on('disconnect', () => {
+    if (socket.userId) {
+      onlineUsers.delete(socket.userId);
+      io.emit('user:offline', socket.userId);
+    }
+  });
+
+  socket.on('message:send', (message) => {
+    socket.to(message.receiver_id).emit('message:received', message);
+  });
+
+  socket.on('user:typing', ({ userId, receiverId, isTyping }) => {
+    socket.to(receiverId).emit('user:typing', { userId, isTyping });
+  });
+});
 app.use(cors({
   origin: 'http://localhost:3000',
   credentials: true
@@ -38,7 +81,6 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 
-// Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
@@ -49,25 +91,38 @@ app.use('/userinbox', notificationRoutes);
 app.use('/api/notification/found-reports', foundReportsRoutes);
 app.use("/api/claim-reports", claimSubmitRoute);
 app.use('/api/notification/claim-reports', claimRoutes);
+app.use('/api/messages',messageRoutes)
+app.post('/api/messages/upload', uploadChatImages.single('file'), async (req, res) => {
+  try {
+    const { sender_id, receiver_id } = req.body;
+    const file = req.file;
 
-// WebSocket event listeners
-io.on('connection', (socket) => {
-  console.log('A user connected: ', socket.id);
+    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}`;
+    
+    const [result] = await db.execute(
+      `INSERT INTO messages (sender_id, receiver_id, message_text, file_url, file_name, file_type) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [sender_id, receiver_id, '', fileUrl, file.originalname, file.mimetype]
+    );
 
-  // Listen for events from the client (e.g., new item uploaded, user message)
-  socket.on('new-item-upload', (data) => {
-    console.log('New item uploaded:', data);
-    // Broadcast the new item to other clients
-    io.emit('item-uploaded', data);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
+    res.json({
+      id: result.insertId,
+      sender_id,
+      receiver_id,
+      message_text: '',
+      file_url: fileUrl,
+      file_name: file.originalname,
+      file_type: file.mimetype,
+      timestamp: new Date(),
+      status: 'sent'
+    });
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    res.status(500).json({ error: 'Failed to upload file' });
+  }
 });
-
-// Start the server
+app.use('/uploads', express.static('uploads/chatImages'));
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

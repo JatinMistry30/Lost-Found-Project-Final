@@ -271,3 +271,22 @@ export const verifyTokenNotifications = async (req, res, next) => {
     res.status(400).json({ error: "Invalid token" });
   }
 };
+
+export const getAllUsers = async (req, res) => {
+
+  
+  try {
+    const query = "SELECT id, username, email FROM users"; 
+    const [result] = await db.query(query); 
+    
+    if (result.length === 0) { // Adjusted to check result length directly
+      return res.status(404).json({ message: "No users found" });
+    }
+
+    return res.status(200).json(result); // Return result directly
+
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return res.status(500).json({ error: "An error occurred while fetching users" });
+  }
+}

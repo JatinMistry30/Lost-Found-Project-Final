@@ -14,6 +14,7 @@ import ClaimFound from './Components/ClaimFound/ClaimFound';
 import { io } from 'socket.io-client';  // Import WebSocket client
 import './App.css';
 import ClaimReviewItem from './Components/ClaimReiviewItem/ClaimReviewItem';
+import ChatInbox from './Components/Pages/ChatInbox/ChatInbox';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -64,6 +65,7 @@ const App = () => {
           <Route path="/register" element={isAuthenticated ? <Navigate to="/" /> : <Register />} />
           
           <Route path="/" element={<ProtectedRoute><Home  /></ProtectedRoute>} />
+          <Route path="/chat-inbox" element={<ProtectedRoute><ChatInbox /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/report-item" element={<ProtectedRoute><ReportItem  /></ProtectedRoute>} />
           <Route path="/details/:id" element={<ProtectedRoute><ViewDetails /></ProtectedRoute>} />

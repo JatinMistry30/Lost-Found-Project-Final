@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import './ReportFoundItem.css'
+import './ReportFoundItem.css';
+
 const ReviewFoundItem = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -45,6 +46,14 @@ const ReviewFoundItem = () => {
       console.error('Failed to process response:', err);
       alert(err.response?.data?.message || 'Failed to process your response');
     }
+  };
+
+  const handleChat = () => {
+    navigate(`/chat-inbox/${report.finderEmail}`, {
+      state: {
+        prebuiltMessage: `Hey, what's about the product? (${report.itemName})`,
+      },
+    });
   };
 
   if (loading) {
@@ -142,6 +151,12 @@ const ReviewFoundItem = () => {
             className="reject-button-review-found"
           >
             Reject Report
+          </button>
+          <button
+            onClick={handleChat}
+            className="chat-button-review-found"
+          >
+            Chat with User
           </button>
         </div>
       )}
